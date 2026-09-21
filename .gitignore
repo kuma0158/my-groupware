@@ -1,0 +1,63 @@
+# ------------------------------------------------------------
+# GitHub に上げるもの:
+#   backend/ (app, tests, requirements*.txt, .env.example)
+#   frontend/ (src, 設定ファイル, package*.json, .env.example)
+#   e2e/ (tests, scripts, 設定ファイル, package*.json)
+#   agent/ (agent.py, requirements.txt, README.md)
+#   .vscode/, README.md, HANDOVER.md, .gitignore
+# それ以外(秘密情報・DB・依存パッケージ・生成物)はここで除外する
+# ------------------------------------------------------------
+
+# ---- 秘密情報(.env.example だけは上げる) ----
+.env
+.env.*
+!.env.example
+
+# ---- データベース・バックアップ ----
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.bak
+*.bak-*
+backend/app.db*
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+
+# ---- Playwright(E2E の結果・使い捨て DB) ----
+e2e/.e2e/
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+e2e/playwright/.cache/
+
+# ---- 雛形生成用のスキルパッケージ(システム本体ではない) ----
+*.skill
+
+# ---- README の HTML 書き出しなど ----
+*.md.html
+
+# ---- ログ・OS・エディタ ----
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
