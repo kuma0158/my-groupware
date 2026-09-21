@@ -43,6 +43,7 @@ next-env.d.ts
 npm-debug.log*
 
 # ---- Playwright(E2E の結果・使い捨て DB) ----
+e2e
 e2e/.e2e/
 e2e/test-results/
 e2e/playwright-report/
