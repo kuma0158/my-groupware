@@ -32,6 +32,17 @@ def _too_many_requests(remaining_seconds: float) -> HTTPException:
     )
 
 
+def _registration_open(db: DbSession) -> bool:
+    first = db.scalar(select(User.id).limit(1)) is None
+    return settings.allow_registration or first
+
+
+@router.get("/registration-status")
+def registration_status(db: DbSession):
+    """新規登録画面を見せてよいか。フロントが /register への直接アクセスを判定するのに使う"""
+    return {"open": _registration_open(db)}
+
+
 def _set_login_cookie(response: Response, user_id: int) -> None:
     response.set_cookie(
         key=settings.cookie_name,
@@ -51,14 +62,14 @@ def register(data: RegisterIn, request: Request, response: Response, db: DbSessi
     if remaining:
         raise _too_many_requests(remaining)
     email = data.email.lower()
-    first = db.scalar(select(User.id).limit(1)) is None
-    if not settings.allow_registration and not first:
+    if not _registration_open(db):
         register_limiter.record_failure(ip)
         raise HTTPException(status.HTTP_403_FORBIDDEN, "新規登録は停止しています。管理者に依頼してください")
     if db.scalar(select(User).where(User.email == email)):
         register_limiter.record_failure(ip)
         raise HTTPException(status.HTTP_409_CONFLICT, "このメールアドレスは既に登録されています")
     # 最初に登録した人はパワーユーザーにする(誰も管理できない状態を避けるため)
+    first = db.scalar(select(User.id).limit(1)) is None
     user = User(
         email=email, name=data.name, department=data.department,
         hashed_password=hash_password(data.password), role="power" if first else "user",

@@ -102,6 +102,22 @@ def test_registration_can_be_closed(client, monkeypatch):
     assert client.post("/api/auth/login", json={"email": "admin@example.com", "password": "password123"}).status_code == 200
 
 
+def test_registration_status_reflects_setting(client, monkeypatch):
+    from app.config import settings
+
+    # 誰も居ない状態では、閉じていても最初の1人は登録できるので open
+    assert client.get("/api/auth/registration-status").json() == {"open": True}
+
+    monkeypatch.setattr(settings, "allow_registration", False)
+    client.post("/api/auth/register", json={
+        "email": "admin@example.com", "name": "管理者", "password": "password123", "department": ""})
+    # 既に1人居る状態で閉じていれば closed
+    assert client.get("/api/auth/registration-status").json() == {"open": False}
+
+    monkeypatch.setattr(settings, "allow_registration", True)
+    assert client.get("/api/auth/registration-status").json() == {"open": True}
+
+
 def test_startup_refuses_default_secret_when_secure(client, monkeypatch):
     import pytest
     from fastapi.testclient import TestClient
