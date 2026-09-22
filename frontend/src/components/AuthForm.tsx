@@ -75,13 +75,11 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
         <button className="btn" disabled={loading}>
           {loading ? "処理中..." : isRegister ? "登録する" : "ログイン"}
         </button>
-        <p className="sub">
-          {isRegister ? (
-            <>アカウントをお持ちの方は <Link href="/login">ログイン</Link></>
-          ) : (
-            <>はじめての方は <Link href="/register">新規登録</Link></>
-          )}
-        </p>
+        {isRegister && (
+          <p className="sub">
+            アカウントをお持ちの方は <Link href="/login">ログイン</Link>
+          </p>
+        )}
       </form>
     </div>
   );

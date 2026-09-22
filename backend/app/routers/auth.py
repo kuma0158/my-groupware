@@ -25,10 +25,12 @@ def _set_login_cookie(response: Response, user_id: int) -> None:
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register(data: RegisterIn, response: Response, db: DbSession):
     email = data.email.lower()
+    first = db.scalar(select(User.id).limit(1)) is None
+    if not settings.allow_registration and not first:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "新規登録は停止しています。管理者に依頼してください")
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(status.HTTP_409_CONFLICT, "このメールアドレスは既に登録されています")
     # 最初に登録した人はパワーユーザーにする(誰も管理できない状態を避けるため)
-    first = db.scalar(select(User.id).limit(1)) is None
     user = User(
         email=email, name=data.name, department=data.department,
         hashed_password=hash_password(data.password), role="power" if first else "user",

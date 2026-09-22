@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     cookie_name: str = "access_token"
     cookie_secure: bool = False
     frontend_origin: str = "http://localhost:3000"
+    # false にすると、最初の 1 人(パワーユーザー)以外の新規登録を受け付けない(社内専用の公開向け)
+    allow_registration: bool = True
 
 
 settings = Settings()

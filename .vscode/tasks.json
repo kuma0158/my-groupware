@@ -4,7 +4,7 @@
     {
       "label": "Validate Agent Environment",
       "type": "shell",
-      "command": "h:/dev/my-groupware/agent/.venv/Scripts/python.exe -c \"import debugpy, sys; print('agent-debug-ready')\"",
+      "command": "${workspaceFolder}/agent/.venv/Scripts/python.exe -c \"import debugpy, sys; print('agent-debug-ready')\"",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -13,7 +13,7 @@
     {
       "label": "Run Groupware Agent",
       "type": "shell",
-      "command": "h:/dev/my-groupware/agent/.venv/Scripts/python.exe -m debugpy --listen 127.0.0.1:5679 agent/agent.py --prompt \"Summarize the current workspace and suggest three useful tasks.\"",
+      "command": "${workspaceFolder}/agent/.venv/Scripts/python.exe -m debugpy --listen 127.0.0.1:5679 agent/agent.py --prompt \"Summarize the current workspace and suggest three useful tasks.\"",
       "isBackground": true,
       "options": {
         "cwd": "${workspaceFolder}"

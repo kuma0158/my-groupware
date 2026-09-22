@@ -85,3 +85,32 @@ def test_deactivated_user_cannot_login(client, me, other):
 def test_unknown_user_and_bad_role(client, me):
     assert client.patch("/api/admin/users/9999", json={"role": "user"}).status_code == 404
     assert client.patch(f"/api/admin/users/{me['id']}", json={"role": "boss"}).status_code == 422
+
+
+def test_registration_can_be_closed(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "allow_registration", False)
+    # 最初の 1 人(パワーユーザー)は登録できる
+    assert client.post("/api/auth/register", json={
+        "email": "admin@example.com", "name": "管理者", "password": "password123", "department": ""}).status_code == 201
+    # 2 人目からは 403
+    r = client.post("/api/auth/register", json={
+        "email": "late@example.com", "name": "遅刻", "password": "password123", "department": ""})
+    assert r.status_code == 403
+    # 通常のログインは影響を受けない
+    assert client.post("/api/auth/login", json={"email": "admin@example.com", "password": "password123"}).status_code == 200
+
+
+def test_startup_refuses_default_secret_when_secure(client, monkeypatch):
+    import pytest
+    from fastapi.testclient import TestClient
+
+    from app.config import settings
+    from app.main import app
+
+    monkeypatch.setattr(settings, "cookie_secure", True)
+    monkeypatch.setattr(settings, "secret_key", "change-me")
+    with pytest.raises(RuntimeError):
+        with TestClient(app):
+            pass

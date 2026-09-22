@@ -1,7 +1,142 @@
+# 引き継ぎ書
+
+- システムの全体像・起動手順・API 一覧・データモデル・カスタマイズの入口は `README.md` を見ること。
+- この文書の前半「0. 現在の状態」は、2026-09-21 時点の**全体のまとめ**。まずここを読めば引き継げる。
+- 後半は日付ごとの**変更履歴**（何をなぜ変えたか・決めごと）。細部を調べるときに見る。
+
+---
+
+# 0. 現在の状態（2026-09-21 時点）
+
+## 0-1. システムの概要
+
+社内グループウェア。FastAPI（`backend/`、ポート 8000）＋ Next.js（`frontend/`、ポート 3000）＋ SQLite（`backend/app.db`）。認証は HttpOnly Cookie の JWT。
+
+| 機能 | 画面 | 状態 |
+|---|---|---|
+| 新規登録・ログイン・ログアウト | `/login` `/register` | 完成。最初の登録者がパワーユーザー |
+| ポータル（ウィジェット） | `/dashboard` | 完成。4 列、ドラッグ/長押しで並べ替え、ユーザーごとに保存 |
+| スケジュール | `/dashboard/schedule` | 月・週表示、モーダルで追加・編集、自分の予定のドラッグ移動 |
+| ToDo | `/dashboard/todos` | カンバン（列は全員共有）、詳細の小窓、他ユーザーへの共有 |
+| インフォメーション | `/dashboard/notices` | 投稿・上部固定・既読。自分の投稿は既読扱い |
+| 伝言・在席 | `/dashboard/office` | 在席更新、伝言（モーダル）、対応済み |
+| 上部ナビ・バッジ | 全画面 | ToDo・お知らせ・伝言の件数。60 秒ごと＋操作直後に更新 |
+| 設定 | `/dashboard/settings` | プロフィール、パスワード、カラースキーム 4 種、ユーザー管理（パワーユーザーのみ） |
+| AI エージェント雛形 | `agent/` | 本体とは独立。Azure OpenAI 未設定時は固定応答 |
+
+## 0-2. リポジトリ（git）
+
+- 2026-09-21 に `git init`。既定ブランチは `main`。作成者は `shino <shinoabe@gmail.com>`（**このリポジトリだけの設定**＝`--local`）。
+- コミット履歴:
+  - `9e02d1b` Initial commit
+  - `413c884` push対象を削除（`.gitignore` に `e2e` を追加）
+  - `c962798` e2e ディレクトリを git の管理から外す
+  - この引き継ぎ書の更新（未コミットなら、次にコミットする）
+- **git で管理しているもの**: `backend/`（app・tests・requirements*.txt・`.env.example`）、`frontend/`（src・設定・package*.json・`.env.example`）、`agent/`、`.vscode/`、`README.md`、`HANDOVER.md`、`.gitignore`。
+- **管理していないもの**（`.gitignore` で除外）:
+  - 秘密情報: `.env` / `.env.*`（`.env.example` は管理する）
+  - DB とバックアップ: `*.db`、`backend/app.db*`（`app.db.bak-*` を含む）
+  - 依存パッケージ・キャッシュ・生成物: `.venv/`、`node_modules/`、`.next/`、`__pycache__/`、`.pytest_cache/`、`*.tsbuildinfo`、`next-env.d.ts`
+  - **`e2e/` ディレクトリ全体**（手元には残っている。git からだけ外した）
+  - `*.skill`（雛形生成用のスキルパッケージ。システム本体ではない）、`*.md.html`
+- 改行コード: Windows の git 設定で、取り出し時に CRLF になる（`git add` で「LF will be replaced by CRLF」の警告が出る）。他 OS の人と共同開発するなら `.gitattributes` で LF に揃えるとよい。**未対応。**
+
+## 0-3. GitHub
+
+- **まだ上げていない（ユーザーの指示で中断）。** リモートは未登録、リポジトリも未作成。
+- GitHub CLI（`gh` v2.101.0）は winget で導入済み（`C:\Program Files\GitHub CLI\gh.exe`）。**ログインはまだ。**
+- 再開する手順（公開範囲は Public の予定だった）:
+  ```bash
+  gh auth login --web --git-protocol https     # ブラウザで認証（対話が必要）
+  gh repo create my-groupware --public --source=. --remote=origin --push
+  ```
+- push 前に確認したこと: コミット内に API キー・トークン・秘密鍵は無い。
+  ただし `HANDOVER.md` に**動作確認用アカウントのパスワード**（`Check12345`、手元の開発用 DB にだけ存在）が書かれている。Public にするなら消すか伏せるのが無難。
+
+## 0-3b. VPS への公開
+
+- 手順書は `docs/deploy.md`（Ubuntu + Caddy + systemd + SQLite）。設定ファイルの実物は `deploy/`（systemd・Caddyfile・`.env` 見本・`backup.sh`・`update.sh`）。**実際の VPS での通し確認は未実施。**
+- **CoreDesk（2026-09-21 に `H:\dev\CoreDesk` へコピーした版）で、VPS 対応のコードを入れた。** 元の `my-groupware` 側には入っていない。
+  - `ALLOW_REGISTRATION`（既定 `true`）: `false` で、最初の 1 人以外の新規登録を 403 にする（`config.py`・`routers/auth.py`）。
+  - 起動時の確認: `COOKIE_SECURE=true` で `SECRET_KEY` が `change-me` または 32 文字未満なら、バックエンドは起動しない（`main.py`）。
+  - `.vscode/tasks.json` の絶対パスを `${workspaceFolder}` に直した。
+  - テスト 2 件を追加（`tests/test_settings.py`）。pytest は 83 件成功。
+- 公開直後は、自分で先に新規登録してパワーユーザーになり、全員の登録後に `ALLOW_REGISTRATION=false` にして再起動する。
+
+## 0-4. テスト
+
+### Cloudflare Tunnel 対応（2026-09-21、CoreDesk）
+
+- Windows 用の公開起動: `deploy/windows/coredesk.cmd Build` / `Backend` / `Frontend`。
+- 詳細: `docs/cloudflare-tunnel-setup.md`。既存の `/api/*` rewrites を維持し、Next.js は127.0.0.1:3000、FastAPI は127.0.0.1:8000で待ち受ける。
+- 公開起動では Secure Cookie、公開オリジン、新規登録停止をプロセス環境変数で設定。既存 `.env` と DB は維持する。
+- `middleware.ts` は `PUBLIC_ORIGIN` を使い、未認証時に内部の localhost へリダイレクトされる問題を修正。
+- 本番ビルドは `.next-tunnel/`。検証は `deploy/windows/smoke_test.py`（専用ポート、一時DB、`.next-tunnel-smoke/`）で実施。
+- pytest 83件成功。公開ホスト名でのAPI転送、Secure Cookie、認証付き6画面、登録停止、ログアウト・ログインのローカル統合検証成功。
+- 2026-09-21 15:23 JST: ユーザーが Tunnel を設定した後、公開URL `https://coredesk.shinobuabe.com` を Chromium で検証済み。ローカルと公開URLの health、ログイン、認証付き6画面、再読込時の認証維持、ログアウト、未認証APIの401、ログイン画面へのリダイレクトが成功。JavaScriptエラー・静的ファイルのHTTPエラーなし。
+- Next.js (127.0.0.1:3000) と FastAPI (127.0.0.1:8000) は公開用スクリプトで稼働中。Cloudflare 管理画面の DNS・Access ポリシー自体は未監査。
+- ローカル検証記録: `e2e/test-results/public-tunnel/report.json` と画面PNG。再確認用 `e2e/verify-public-tunnel.cjs` とともに Git 管理外。
+
+### 以前の確認記録
+
+- pytest: 81 件（`backend/tests/`）。`cd backend && .venv\Scripts\python.exe -m pytest -q`
+- E2E（Playwright）: 22 件（`e2e/tests/`）。**`e2e/` は git 管理外になったので、clone した人の手元には無い。** 流すときは開発用バックエンド（8000）を止めてから。
+- `tsc` はエラーなし（設定の追加時点）。
+- 件数は最後に確認した時点のもの。今回（README・.gitignore・git の作業）はコード変更がないため、テストは流していない。
+
+## 0-5. ドキュメント
+
+- `README.md`: 2026-09-21 にシステム全体の説明として書き直した（構成図・機能・起動・環境変数・API 一覧・データモデル・権限・テーマ・カスタマイズの入口・エージェント・運用上の注意・本番公開前のチェック）。
+- **README の「E2E テスト」の節は、`e2e/` を git から外したため、clone した人には当てはまらない。** 消すか、「手元にだけある」旨に書き換えるか、判断待ち。
+- `README.md.html`（README の HTML 書き出し）は除外対象。古い内容のままの可能性がある。
+- `agent/README.md`: エージェントの使い方（英語）。
+
+## 0-6. 残っている課題・未確認（全体のまとめ）
+
+判断が必要なもの:
+- README の E2E の節の扱い（上記 0-5）。
+- `.vscode/tasks.json` に絶対パス `h:/dev/my-groupware/agent/.venv/...` が書かれている。他の環境では動かない。`${workspaceFolder}` に直すか、`.vscode/` を管理から外すか。
+- GitHub への公開の再開と、公開範囲（Public / Private）の最終判断。
+- `HANDOVER.md` 内の動作確認用パスワードの扱い（上記 0-3）。
+
+未確認（ブラウザ・実機）:
+- スマホ実機（iOS / Android）での長押しドラッグ（ポータル・カンバン・スケジュール）。
+- 各カラースキーム（特にダークモード）とポータル 4 列の見た目。
+- 伝言のモーダル化、バッジの即時更新、自分のお知らせの既読扱いの画面表示。
+- ToDo 共有の画面操作。E2E に共有のテストが無い。
+- 他人の予定の読み取り専用表示、バッジの 60 秒ごとの自動更新、モーダルの背景クリックで閉じる動作。
+
+改善案:
+- ToDo の操作（完了など）の後に `refreshBadges()` を呼んでいない。
+- 他ユーザーの画面へバッジを即時に届けるには SSE / WebSocket が要る。
+- 完了列のカードは全件表示。増えたら古いものを畳む仕組みが要る。
+- カード新規作成時は件名だけ。担当者・期限は作成後に詳細から。
+- 予定の繰り返し登録、参加者の指定は未実装。
+- 列の色は並び順で決まる。列ごとに固定するなら `todo_columns` に色の項目が要る。
+- 本番化するなら PostgreSQL / MySQL と Alembic の導入を検討。
+
+手元の後片付け候補（どれも git 管理外。消すかは任意）:
+- `backend/app.db.bak-20260920-190031`、`backend/app.db.bak-before-kanban-20260921-090329`（移行前の DB バックアップ）。
+- 開発用 DB の動作確認用ユーザー（`check-other@example.com` / `check-me@example.com`）と、E2E で溜まったテスト用アカウント。
+
+## 0-7. 運用上の注意（特によく起きること）
+
+- **コードを変えたらバックエンドを再起動する。** 古いコードのまま動いていて、405 や項目不足のエラーになったことが複数回ある。開発中は `uvicorn app.main:app --reload --port 8000`。`--reload` を止めるときは親子両方のプロセスを終了する。
+- `app.db` を消す・空にするときは、バックエンドを止めてから（テーブルは起動時に作られる）。既存 DB は起動時に自動で移行される。
+- Next.js は 3000 が塞がっていると黙って 3001 で起動する。起動ログの URL を確認する。
+- `crud.py` のバッジ件数（`badge_counts()`）と各一覧は同じ条件で数えている。片方だけ直さない。ToDo の見える範囲は `todo_visible()` だけを直す。
+
+---
+
+# 変更履歴
+
+以下は日付ごとの記録。当時の状態で書いているため、上の「0. 現在の状態」と食い違う箇所は、上を正とする。
+
+---
+
 # 引き継ぎ書（2026-09-20 追加分）
 
 `README.md` の内容に対して、この日に追加・変更した分をまとめる。
-土台の作りや起動手順は `README.md` を見ること。ここでは**差分と、引き継ぐ上での注意点**だけを書く。
 
 ---
 

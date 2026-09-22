@@ -9,6 +9,8 @@
 # ------------------------------------------------------------
 
 # ---- 秘密情報(.env.example だけは上げる) ----
+.cloudflared/
+*.token
 .env
 .env.*
 !.env.example
@@ -37,6 +39,8 @@ htmlcov/
 # ---- Node / Next.js ----
 node_modules/
 .next/
+.next-tunnel/
+.next-tunnel-smoke/
 out/
 next-env.d.ts
 *.tsbuildinfo

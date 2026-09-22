@@ -1,0 +1,15 @@
+[Unit]
+Description=CoreDesk frontend (Next.js)
+After=network.target groupware-backend.service
+
+[Service]
+User=groupware
+WorkingDirectory=/opt/groupware/app/frontend
+Environment=NODE_ENV=production
+Environment=BACKEND_URL=http://127.0.0.1:8000
+ExecStart=/usr/bin/npm run start -- -p 3000 -H 127.0.0.1
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,4 @@
+# example.com を実際のドメインに置き換える。/etc/caddy/Caddyfile に置いて `sudo systemctl reload caddy`
+example.com {
+    reverse_proxy 127.0.0.1:3000
+}

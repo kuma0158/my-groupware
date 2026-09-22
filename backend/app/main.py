@@ -12,6 +12,9 @@ from .routers import admin, auth, dashboard, notices, office, schedule, todo_col
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # HTTPS 公開(COOKIE_SECURE=true)で、署名鍵が初期値・短すぎる値のままなら起動しない
+    if settings.cookie_secure and (settings.secret_key == "change-me" or len(settings.secret_key) < 32):
+        raise RuntimeError("SECRET_KEY が初期値または短すぎます。32 文字以上の推測されない値にしてください")
     # ひな型では手軽さ優先で自動作成。本番運用では Alembic 等のマイグレーションに置き換える
     Base.metadata.create_all(bind=engine)
     board.upgrade_schema(engine)  # 既存のDBに、ToDoカンバン用の項目を足す

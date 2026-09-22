@@ -117,6 +117,7 @@ API ドキュメント(Swagger UI): http://localhost:8000/docs
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | ログインの有効期間(分) |
 | `COOKIE_SECURE` | `false` | HTTPS 公開時は `true` |
 | `FRONTEND_ORIGIN` | `http://localhost:3000` | フロントエンドのオリジン(CORS) |
+| `ALLOW_REGISTRATION` | `true` | `false` で、最初の 1 人以外の新規登録を止める(公開後の社内専用運用向け) |
 
 ### 2. フロントエンド(Next.js) — http://localhost:3000
 
@@ -378,10 +379,16 @@ python agent.py --prompt "今日チームがやるべきことを 3 つ挙げて
 - HTTPS 化して `COOKIE_SECURE=true` にする
 - `FRONTEND_ORIGIN` / `BACKEND_URL` を本番の URL に合わせ、`npm run build` → `npm run start` で起動する
 - 同時利用が増えるなら SQLite から PostgreSQL / MySQL への切り替えと、Alembic によるマイグレーション管理を検討する
+- `ALLOW_REGISTRATION=false` で新規登録を止める(全員の登録後)
 - 開発用の DB バックアップ(`backend/app.db.bak-*`)や動作確認用ユーザーを持ち込まない
 
 ## 関連ドキュメント
 
+- `docs/cloudflare-tunnel-setup.md` — Windows から Cloudflare Tunnel で試験公開する手順。公開用のビルド・起動は `deploy/windows/coredesk.cmd` を使用
+
 - `HANDOVER.md` — 機能追加の経緯、仕様上の決めごと、未確認の項目・改善案
+- `docs/features.md` — 実装済みの機能・サービス一覧(仕様と、未実装・未確認の項目)
+- `docs/deploy.md` — VPS への公開手順(Caddy + systemd + SQLite、バックアップ・更新・トラブル対応つき)
+- `deploy/` — VPS 用の設定ファイル一式(systemd、Caddyfile、`.env` の見本、バックアップ・更新スクリプト)
 - `agent/README.md` — AI エージェントの使い方
 - http://localhost:8000/docs — API の詳細(バックエンド起動中のみ)
