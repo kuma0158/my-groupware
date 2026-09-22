@@ -128,7 +128,13 @@ export default function TopNav({ user }: { user: User }) {
 
   return (
     <header className="topbar">
-      <div className="brand">社内グループウェア</div>
+      <Link href="/dashboard" className="brand" aria-label="CoreDesk ポータルへ">
+        <svg className="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="2.5" y="5" width="19" height="14" rx="3" />
+          <circle cx="12" cy="12" r="2.8" fill="currentColor" stroke="none" />
+        </svg>
+        <span className="brand-word">CoreDesk</span>
+      </Link>
       <nav className="topnav">
         {NAV.map((n) => {
           // ポータルだけは完全一致。他は配下の画面でも点灯させる

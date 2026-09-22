@@ -52,7 +52,10 @@ h1 {
   display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap;
   background: var(--rail); border-bottom: 1px solid var(--border); padding: .5rem 1.5rem;
 }
-.topbar .brand { font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1rem; letter-spacing: var(--head-track); color: var(--text); }
+.topbar .brand { display: inline-flex; align-items: center; gap: .5rem; border-radius: var(--radius-sm); padding: .15rem .2rem; }
+.topbar .brand:hover { background: var(--hover); }
+.topbar .brand-mark { width: 26px; height: 26px; flex: none; color: var(--primary); }
+.topbar .brand-word { font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.05rem; letter-spacing: var(--head-track); color: var(--text); }
 .topnav { display: flex; gap: .15rem; flex: 1; min-width: 0; }
 .topnav a {
   display: grid; justify-items: center; gap: .2rem; min-width: 76px;
@@ -98,7 +101,8 @@ h1 {
 
 @media (max-width: 720px) {
   .topbar { gap: .6rem; padding: .45rem .8rem; }
-  .topbar .brand { font-size: .92rem; }
+  .topbar .brand-mark { width: 22px; height: 22px; }
+  .topbar .brand-word { font-size: .92rem; }
   /* 狭い画面ではメニューを横スクロールさせる */
   .topnav { order: 3; width: 100%; flex: none; overflow-x: auto; }
   .topnav a { min-width: 64px; padding: .35rem .5rem .25rem; font-size: .68rem; }
