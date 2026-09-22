@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.database import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402
+from app.routers.auth import login_limiter, register_limiter  # noqa: E402
 
 USER = {"email": "taro@example.com", "name": "山田太郎", "password": "password123", "department": "営業部"}
 OTHER = {"email": "hanako@example.com", "name": "鈴木花子", "password": "password123", "department": "総務部"}
@@ -20,6 +21,9 @@ OTHER = {"email": "hanako@example.com", "name": "鈴木花子", "password": "pas
 def client():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    # レート制限の記録はテストをまたいで残る(モジュール単位のメモリのため)ので毎回リセットする
+    login_limiter.clear()
+    register_limiter.clear()
     with TestClient(app) as c:
         yield c
 

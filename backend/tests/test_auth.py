@@ -1,4 +1,5 @@
 USER = {"email": "Taro@Example.com", "name": "太郎", "password": "password123", "department": "営業部"}
+OTHER_USER = {"email": "hanako@example.com", "name": "花子", "password": "password123", "department": "総務部"}
 
 
 def test_register_logs_in_and_me_works(client):
@@ -74,3 +75,53 @@ def test_layout_rejects_unknown_type_and_duplicate_id(client):
 def test_layout_requires_login(client):
     assert client.get("/api/dashboard/layout").status_code == 401
     assert client.put("/api/dashboard/layout", json={"widgets": []}).status_code == 401
+
+
+def test_login_is_locked_out_after_five_failures(client):
+    client.post("/api/auth/register", json=USER)
+    client.post("/api/auth/logout")
+
+    bad = {"email": USER["email"], "password": "wrong-pass"}
+    for _ in range(5):
+        r = client.post("/api/auth/login", json=bad)
+        assert r.status_code == 401
+
+    # 6回目は、正しいパスワードでもロックされる
+    locked = client.post("/api/auth/login", json={"email": USER["email"], "password": USER["password"]})
+    assert locked.status_code == 429
+    assert "Retry-After" in locked.headers
+    assert client.get("/api/auth/me").status_code == 401
+
+    # 別のアカウントはロックの影響を受けない
+    client.post("/api/auth/register", json=OTHER_USER)
+    client.post("/api/auth/logout")
+    other_ok = client.post("/api/auth/login", json={"email": OTHER_USER["email"], "password": OTHER_USER["password"]})
+    assert other_ok.status_code == 200
+
+
+def test_login_success_resets_failure_count(client):
+    client.post("/api/auth/register", json=USER)
+    client.post("/api/auth/logout")
+
+    bad = {"email": USER["email"], "password": "wrong-pass"}
+    for _ in range(4):
+        assert client.post("/api/auth/login", json=bad).status_code == 401
+
+    ok = client.post("/api/auth/login", json={"email": USER["email"], "password": USER["password"]})
+    assert ok.status_code == 200
+
+    # 成功したので失敗カウントは0に戻り、再びログインできる
+    client.post("/api/auth/logout")
+    assert client.post("/api/auth/login", json={"email": USER["email"], "password": USER["password"]}).status_code == 200
+
+
+def test_register_is_locked_out_after_five_failures(client):
+    client.post("/api/auth/register", json=USER)  # 既存の登録者を1人作る
+
+    for _ in range(5):
+        r = client.post("/api/auth/register", json=USER)  # 重複メールで失敗させる
+        assert r.status_code == 409
+
+    locked = client.post("/api/auth/register", json=OTHER_USER)  # 別メールでもIP単位でロックされる
+    assert locked.status_code == 429
+    assert "Retry-After" in locked.headers
