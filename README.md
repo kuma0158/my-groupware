@@ -218,7 +218,6 @@ frontend/               Next.js
 e2e/                    Playwright の E2E テスト
 agent/                  ローカル AI エージェントの雛形
 .vscode/                エージェントのデバッグ起動設定(tasks.json / launch.json)
-HANDOVER.md             変更の経緯と引き継ぎ事項
 ```
 
 ## API 一覧
