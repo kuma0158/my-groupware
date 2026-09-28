@@ -321,6 +321,7 @@ class WidgetIn(BaseModel):
     id: str = Field(min_length=1, max_length=40)
     type: str = Field(min_length=1, max_length=40)
     span: int = Field(default=1, ge=1, le=2)
+    pinned: bool = False
     props: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("props")

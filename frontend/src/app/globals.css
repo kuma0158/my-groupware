@@ -170,6 +170,9 @@ body.dragging-active .widget-head { cursor: grabbing; }
 .grip { color: var(--grip); font-size: .9rem; letter-spacing: -1px; }
 .icon { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: .8rem; line-height: 1; padding: .22rem .3rem; border-radius: var(--radius-sm); }
 .icon:hover { background: var(--hover); color: var(--primary); }
+.widget[data-pinned="true"] .widget-head { cursor: default; }
+.pin-toggle[aria-pressed="true"] { background: var(--hover); color: var(--primary); }
+.widget-head .icon:disabled { opacity: .35; cursor: not-allowed; background: none; color: var(--muted); }
 .widget-body { padding: .8rem .8rem .9rem; }
 /* 本文をクリックすると詳細画面へ移動するカード */
 /* クリックで移動する場所なので、なぞっても文字が選択されないようにする */

@@ -48,7 +48,7 @@ export type Summary = {
 /** メニューに出す新着の件数 */
 export type Badges = { todos: number; notices: number; messages: number };
 
-export type Widget = { id: string; type: string; span: number; props: Record<string, string> };
+export type Widget = { id: string; type: string; span: number; pinned?: boolean; props: Record<string, string> };
 export type Layout = { widgets: Widget[] };
 
 export const PRESENCE_LABEL: Record<string, string> = {

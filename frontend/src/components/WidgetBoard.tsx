@@ -43,6 +43,8 @@ export default function WidgetBoard({ initial, summary }: { initial: Widget[]; s
         const from = prev.findIndex((w) => w.id === fromId);
         const to = prev.findIndex((w) => w.id === toId);
         if (from < 0 || to < 0) return prev;
+        // 固定カードをまたぐ移動も防ぎ、並べ替えで固定位置がずれないようにする。
+        if (prev.slice(Math.min(from, to), Math.max(from, to) + 1).some((w) => w.pinned)) return prev;
         const next = [...prev];
         next.splice(to, 0, ...next.splice(from, 1));
         return next;
@@ -63,11 +65,15 @@ export default function WidgetBoard({ initial, summary }: { initial: Widget[]; s
   }
 
   function remove(id: string) {
-    update((prev) => prev.filter((w) => w.id !== id));
+    update((prev) => prev.filter((w) => w.id !== id || w.pinned));
   }
 
   function toggleSpan(id: string) {
-    update((prev) => prev.map((w) => (w.id === id ? { ...w, span: w.span === 1 ? 2 : 1 } : w)));
+    update((prev) => prev.map((w) => (w.id === id && !w.pinned ? { ...w, span: w.span === 1 ? 2 : 1 } : w)));
+  }
+
+  function togglePin(id: string) {
+    update((prev) => prev.map((w) => (w.id === id ? { ...w, pinned: !w.pinned } : w)));
   }
 
   /** 本文のクリックで詳細画面へ。中の操作や文字の選択は邪魔しない */
@@ -86,6 +92,7 @@ export default function WidgetBoard({ initial, summary }: { initial: Widget[]; s
       <div className="board-bar">
         <p className="muted">
           カードは見出しをつかむと並べ替えできます(スマホは長押し)。本文をクリックすると各画面へ移動します
+          。ピン止め中は移動・幅変更・削除をロックします
           {saveState === "saving" && " · 保存中…"}
           {saveState === "error" && " · 保存に失敗しました"}
         </p>
@@ -116,16 +123,20 @@ export default function WidgetBoard({ initial, summary }: { initial: Widget[]; s
               style={{ gridColumn: `span ${w.span}` }}
               data-widget-id={w.id}
               data-widget-type={w.type}
+              data-pinned={w.pinned ? "true" : "false"}
             >
-              <header className="widget-head" data-drag-handle>
+              <header className="widget-head" data-drag-handle={w.pinned ? undefined : true}>
                 <span className="grip" aria-hidden="true">
-                  ⠿
+                  {w.pinned ? "📌" : "⠿"}
                 </span>
                 <h2>{def.title}</h2>
-                <button className="icon" title="幅を変える" onClick={() => toggleSpan(w.id)}>
+                <button className="icon pin-toggle" title={w.pinned ? "ピン止めを解除" : "ピン止め"} aria-pressed={!!w.pinned} onClick={() => togglePin(w.id)}>
+                  {w.pinned ? "解除" : "固定"}
+                </button>
+                <button className="icon" title="幅を変える" disabled={!!w.pinned} onClick={() => toggleSpan(w.id)}>
                   ⇔
                 </button>
-                <button className="icon" title="削除" onClick={() => remove(w.id)}>
+                <button className="icon" title="削除" disabled={!!w.pinned} onClick={() => remove(w.id)}>
                   ✕
                 </button>
               </header>

@@ -33,6 +33,16 @@ def test_layout_default_and_save(client, me):
     saved = client.get("/api/dashboard/layout").json()["widgets"]
     assert [w["id"] for w in saved] == ["a", "b"]
     assert saved[1]["props"]["text"] == "メモ"
+    assert saved[0]["pinned"] is False  # 既存の保存形式も読み込める
+
+
+def test_layout_pin_persists_and_can_be_released(client, me):
+    widgets = [{"id": "pin", "type": "memo", "span": 1, "props": {}, "pinned": True}]
+    assert client.put("/api/dashboard/layout", json={"widgets": widgets}).status_code == 200
+    assert client.get("/api/dashboard/layout").json()["widgets"] == widgets
+    widgets[0]["pinned"] = False
+    assert client.put("/api/dashboard/layout", json={"widgets": widgets}).status_code == 200
+    assert client.get("/api/dashboard/layout").json()["widgets"] == widgets
 
 
 def test_layout_rejects_unknown_type(client, me):
