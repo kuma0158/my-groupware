@@ -24,7 +24,7 @@ def client():
     # レート制限の記録はテストをまたいで残る(モジュール単位のメモリのため)ので毎回リセットする
     login_limiter.clear()
     register_limiter.clear()
-    with TestClient(app) as c:
+    with TestClient(app, headers={"Origin": "http://localhost:3000"}) as c:
         yield c
 
 

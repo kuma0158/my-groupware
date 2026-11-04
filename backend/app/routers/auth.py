@@ -1,14 +1,14 @@
 from math import ceil
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from ..config import settings
 from ..deps import CurrentUser, DbSession
 from ..models import User
 from ..rate_limit import RateLimiter
 from ..schemas import LoginIn, PasswordChange, ProfilePatch, RegisterIn, UserOut
-from ..security import DUMMY_HASH, create_access_token, hash_password, verify_password
+from ..security import DUMMY_HASH, create_access_token, decode_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -43,10 +43,10 @@ def registration_status(db: DbSession):
     return {"open": _registration_open(db)}
 
 
-def _set_login_cookie(response: Response, user_id: int) -> None:
+def _set_login_cookie(response: Response, user: User) -> None:
     response.set_cookie(
         key=settings.cookie_name,
-        value=create_access_token(user_id),
+        value=create_access_token(user.id, user.auth_version),
         max_age=settings.access_token_expire_minutes * 60,
         httponly=True,  # JavaScript から読めない → XSS でトークンを盗まれにくい
         secure=settings.cookie_secure,
@@ -78,7 +78,7 @@ def register(data: RegisterIn, request: Request, response: Response, db: DbSessi
     db.commit()
     db.refresh(user)
     register_limiter.reset(ip)
-    _set_login_cookie(response, user.id)  # 登録後はそのままログイン状態にする
+    _set_login_cookie(response, user)  # 登録後はそのままログイン状態にする
     return user
 
 
@@ -95,13 +95,24 @@ def login(data: LoginIn, request: Request, response: Response, db: DbSession):
         # どちらが間違いかは教えない
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "メールアドレスまたはパスワードが正しくありません")
     login_limiter.reset(email)
-    _set_login_cookie(response, user.id)
+    _set_login_cookie(response, user)
     return user
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(response: Response):
-    response.delete_cookie(settings.cookie_name, path="/")
+def logout(request: Request, response: Response, db: DbSession):
+    # 期限切れ・破損Cookieでもブラウザから削除し、署名付きで有効なJWTはDB側でも失効させる。
+    token = request.cookies.get(settings.cookie_name)
+    decoded = decode_access_token(token) if token else None
+    if decoded is not None:
+        user_id, token_version = decoded
+        db.execute(
+            update(User)
+            .where(User.id == user_id, User.auth_version == token_version, User.is_active.is_(True))
+            .values(auth_version=User.auth_version + 1)
+        )
+        db.commit()
+    response.delete_cookie(settings.cookie_name, path="/", secure=settings.cookie_secure, httponly=True, samesite="lax")
 
 
 @router.get("/me", response_model=UserOut)
@@ -121,8 +132,20 @@ def update_me(data: ProfilePatch, user: CurrentUser, db: DbSession):
 
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
-def change_password(data: PasswordChange, user: CurrentUser, db: DbSession):
+def change_password(data: PasswordChange, response: Response, user: CurrentUser, db: DbSession):
     if not verify_password(data.current_password, user.hashed_password):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "現在のパスワードが正しくありません")
-    user.hashed_password = hash_password(data.new_password)
+    result = db.execute(
+        update(User)
+        .where(User.id == user.id, User.auth_version == user.auth_version)
+        .values(
+            hashed_password=hash_password(data.new_password),
+            auth_version=User.auth_version + 1,
+        )
+    )
+    if result.rowcount != 1:
+        db.rollback()
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "再ログインしてください")
     db.commit()
+    db.refresh(user)
+    _set_login_cookie(response, user)

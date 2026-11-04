@@ -16,11 +16,12 @@ def get_current_user(
     unauthorized = HTTPException(status.HTTP_401_UNAUTHORIZED, "ログインが必要です")
     if not token:
         raise unauthorized
-    user_id = decode_access_token(token)
-    if user_id is None:
+    decoded = decode_access_token(token)
+    if decoded is None:
         raise unauthorized
+    user_id, token_version = decoded
     user = db.get(User, user_id)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.auth_version != token_version:
         raise unauthorized
     return user
 

@@ -23,6 +23,8 @@ def upgrade_schema(engine: Engine) -> None:
             conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'"))
         if "color_scheme" not in have:
             conn.execute(text("ALTER TABLE users ADD COLUMN color_scheme VARCHAR(20) NOT NULL DEFAULT 'neutral'"))
+        if "auth_version" not in have:
+            conn.execute(text("ALTER TABLE users ADD COLUMN auth_version INTEGER NOT NULL DEFAULT 0"))
 
 
 def ensure_power_user(db: Session) -> None:

@@ -112,6 +112,7 @@ API ドキュメント(Swagger UI): http://localhost:8000/docs
 | 変数 | 既定値 | 説明 |
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///./app.db` | DB の接続先 |
+| `APP_ENV` | `development` | `production` では安全なCookie・秘密鍵・HTTPS・登録停止を必須にする |
 | `SECRET_KEY` | `change-me` | JWT の署名鍵。推測されない値にする |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | ログインの有効期間(分) |
 | `COOKIE_SECURE` | `false` | HTTPS 公開時は `true` |
@@ -302,6 +303,9 @@ agent/                  ローカル AI エージェントの雛形
 ## 認証と権限
 
 - ログインすると FastAPI が JWT を **HttpOnly Cookie** にセットします。JavaScript からは読めません。
+- JWTには `sub` / `exp` / `ver` を含み、ユーザーDBの `auth_version` と照合します。ログアウト時は全端末の旧JWTを失効し、パスワード変更時は旧JWTを失効して操作中のブラウザへ新JWTを発行します。
+- 状態変更API（POST/PUT/PATCH/DELETE）は `Origin` が `FRONTEND_ORIGIN` と完全一致する場合だけ受け付けます。Swaggerや外部CLIからの状態変更にも正しい Origin が必要です。
+- 新形式JWTへの切替時は既存のログインCookieが無効になり、全利用者は再ログインが必要です。
 - `frontend/src/middleware.ts` はクッキーの有無だけを見る簡易ガードで、正式な確認は `dashboard/layout.tsx` が `/api/auth/me` で行います。
 - 権限は 2 種類:
   - **パワーユーザー**: ユーザー管理ができる。常に 1 人以上必要(最後の 1 人は降格・無効化できない)
@@ -372,6 +376,11 @@ python agent.py --prompt "今日チームがやるべきことを 3 つ挙げて
 - ToDo のバッジの「見た分」はブラウザの localStorage に保存しているため端末ごとです。他のユーザーの画面へのバッジ反映は、60 秒ごとまたは画面移動時です。
 
 ## 本番公開前のチェック
+
+**認証方式変更時の移行**: バックエンド停止後、必ず SQLite をバックアップしてください。起動時の `accounts.upgrade_schema()` により `users.auth_version` が追加されます。旧JWTは `ver` が無いため無効になり、再ログインが必要です。ログアウトは全端末をログアウトさせます。Origin確認のため、Next.jsを公開する正確なオリジンを `FRONTEND_ORIGIN` に設定してください。
+
+**設定**: 本番は `APP_ENV=production`、`COOKIE_SECURE=true`、`ALLOW_REGISTRATION=false`、`FRONTEND_ORIGIN=https://...`、32文字以上の予測困難な `SECRET_KEY` が必須です。初回ユーザーは公開前に作成してください。新規登録の初回アカウント例外は現時点で残っています。
+
 
 - `backend/.env` の `SECRET_KEY` を推測されない値にする
 - HTTPS 化して `COOKIE_SECURE=true` にする
