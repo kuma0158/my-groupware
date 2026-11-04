@@ -4,7 +4,7 @@ const PASSWORD = "initial-password-123";
 const NEW_PASSWORD = "updated-password-456";
 
 function uniqueEmail(testName: string): string {
-  return `e2e-${testName}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}@example.test`;
+  return `e2e-${testName}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}@example.com`;
 }
 
 async function register(page: Page, email: string) {
