@@ -70,8 +70,8 @@ jobs:
       - name: Start isolated services and run E2E
         env:
           SECRET_KEY: github-e2e-test-key-at-least-thirty-two-characters
-          FRONTEND_ORIGIN: http://127.0.0.1:3000
-          PUBLIC_ORIGIN: http://127.0.0.1:3000
+          FRONTEND_ORIGIN: http://localhost:3000
+          PUBLIC_ORIGIN: http://localhost:3000
           BACKEND_URL: http://127.0.0.1:8000
           ALLOW_REGISTRATION: 'true'
           COOKIE_SECURE: 'false'
@@ -82,11 +82,11 @@ jobs:
           export DATABASE_URL="sqlite:///$RUNNER_TEMP/coredesk-e2e.db"
           (cd backend && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000) > "$RUNNER_TEMP/backend.log" 2>&1 &
           BACK_PID=$!
-          (cd frontend && npm run dev -- --hostname 127.0.0.1 --port 3000) > "$RUNNER_TEMP/frontend.log" 2>&1 &
+          (cd frontend && npm run dev -- --hostname localhost --port 3000) > "$RUNNER_TEMP/frontend.log" 2>&1 &
           FRONT_PID=$!
           trap 'kill $BACK_PID $FRONT_PID 2>/dev/null || true; tail -n 80 "$RUNNER_TEMP/backend.log"; tail -n 80 "$RUNNER_TEMP/frontend.log"' EXIT
           for i in $(seq 1 90); do
-            if curl --fail --silent http://127.0.0.1:8000/api/health >/dev/null && curl --fail --silent http://127.0.0.1:3000/login >/dev/null; then break; fi
+            if curl --fail --silent http://127.0.0.1:8000/api/health >/dev/null && curl --fail --silent http://localhost:3000/login >/dev/null; then break; fi
             sleep 2
           done
           curl --fail --silent http://127.0.0.1:8000/api/health
