@@ -125,3 +125,78 @@ def test_register_is_locked_out_after_five_failures(client):
     locked = client.post("/api/auth/register", json=OTHER_USER)  # 別メールでもIP単位でロックされる
     assert locked.status_code == 429
     assert "Retry-After" in locked.headers
+
+
+def test_logout_revokes_old_token(client):
+    assert client.post("/api/auth/register", json=USER).status_code == 201
+    old_token = client.cookies.get("access_token")
+    assert old_token
+    assert client.post("/api/auth/logout").status_code == 204
+    client.cookies.set("access_token", old_token)
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_password_change_revokes_previous_token(client):
+    assert client.post("/api/auth/register", json=USER).status_code == 201
+    old_token = client.cookies.get("access_token")
+    response = client.post("/api/auth/password", json={
+        "current_password": "password123",
+        "new_password": "newpassword123",
+    })
+    assert response.status_code == 204
+    assert client.get("/api/auth/me").status_code == 200
+    client.cookies.set("access_token", old_token)
+    assert client.get("/api/auth/me").status_code == 401
+    client.cookies.clear()
+    assert client.post("/api/auth/login", json={
+        "email": USER["email"], "password": "newpassword123"
+    }).status_code == 200
+
+
+def test_logout_with_invalid_cookie_still_clears_it(client):
+    client.cookies.set("access_token", "not-a-token")
+    response = client.post("/api/auth/logout")
+    assert response.status_code == 204
+    assert client.cookies.get("access_token") is None
+
+
+def test_signed_token_without_expiration_is_rejected(client):
+    import jwt
+    from app.config import settings
+
+    assert client.post("/api/auth/register", json=USER).status_code == 201
+    user_id = client.get("/api/auth/me").json()["id"]
+    bad_token = jwt.encode({"sub": str(user_id), "ver": 0}, settings.secret_key, algorithm=settings.algorithm)
+    client.cookies.set("access_token", bad_token)
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_legacy_signed_token_without_version_is_rejected(client):
+    import jwt
+    from datetime import datetime, timedelta, timezone
+    from app.config import settings
+
+    assert client.post("/api/auth/register", json=USER).status_code == 201
+    user_id = client.get("/api/auth/me").json()["id"]
+    bad_token = jwt.encode({
+        "sub": str(user_id),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+    }, settings.secret_key, algorithm=settings.algorithm)
+    client.cookies.set("access_token", bad_token)
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_cross_origin_changes_are_blocked(client):
+    assert client.post("/api/auth/register", json=USER).status_code == 201
+    response = client.patch("/api/auth/me",
+        headers={"Origin": "https://untrusted.example"},
+        json={"name": "改ざん"})
+    assert response.status_code == 403
+    assert client.get("/api/auth/me").json()["name"] == USER["name"]
+
+
+def test_missing_origin_changes_are_blocked(client):
+    response = client.post("/api/auth/login",
+        headers={"Origin": ""},
+        json={"email": USER["email"], "password": USER["password"]})
+    assert response.status_code == 403
