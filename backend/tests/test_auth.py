@@ -157,7 +157,11 @@ def test_logout_with_invalid_cookie_still_clears_it(client):
     client.cookies.set("access_token", "not-a-token")
     response = client.post("/api/auth/logout")
     assert response.status_code == 204
-    assert client.cookies.get("access_token") is None
+    # TestClientに手動登録したCookieはホストに紐づかず、削除応答だけではjarから消えない。
+    # ブラウザ向けの失効指示(Set-Cookie)そのものを検証する。
+    set_cookie = response.headers["set-cookie"].lower()
+    assert "access_token=" in set_cookie
+    assert "max-age=0" in set_cookie
 
 
 def test_signed_token_without_expiration_is_rejected(client):
