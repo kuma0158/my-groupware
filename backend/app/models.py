@@ -19,6 +19,7 @@ class User(Base):
     department: Mapped[str] = mapped_column(String(100), default="")
     hashed_password: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    auth_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     # 在席状況。席を外すたびに行を増やさず、この2列を上書きする
     presence: Mapped[str] = mapped_column(String(20), default="in")  # in/out/away/off
